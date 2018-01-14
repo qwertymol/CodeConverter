@@ -11,39 +11,67 @@ struct ReplaceTpl {
 struct LanguageDecl {
     const QString name;
     const ReplaceTpl includingTpl;
+    const ReplaceTpl returnTpl;
     const ReplaceTpl funcTpl;
     const ReplaceTpl mainFuncTpl;
+    const ReplaceTpl varInitTpl;
+    const ReplaceTpl assignmentTpl;
 };
 
-LanguageDecl LANGS[] = {
+LanguageDecl LANGS[] =
+{
     {
         "C++",
         {
-            "#include[ ]*<(.*)>",
+            "#include\\s*[<\"]([\\w\\/]+)[>\"]",
             "#include <{LIB}>"
         },
         {
-            "(.*)\\s+(.*)\\s*(\\s*(.*)\\s*)\\s*{\\s*(.*)\\s*}",
-            "{RETTYPE}\\s+{FUNCNAME}\\s*(\\s*{ARGSLIST}\\s*)\\s*{\\s*{BODYLINES}\\s*}"
+            "return\\s*([^;]*);",
+            "return {RETVAL};"
         },
         {
-            "int\\s+main\\s*\\(\\s*(int argc, char \\*argv\\[\\])?\\s*\\)\\s*\\{\\s*(.*)\\s*\\}",
-            "int main(int argc, char *argv) {\n{BODY}\n}"
+            "(\\w+)\\s+(\\w+)\\s*\\(\\s*((?:\\w+\\s*\\*?\\s*\\w+(?:\\[[0-9]*\\])?\\s*(,)\\s*)*(?:\\w+\\s*\\*?\\s*\\w+(?:\\[[0-9]*\\])?))?\\s*\\)\\s*(\\{)([\\s\\S]*)(\\})",
+            "{RETTYPE} {FUNCNAME}({ARGSLIST}) {{BODYLINES}}"
+        },
+        {
+            "(?:(?:int)|(?:void))\\s+main\\s*\\((?:int\\s+argc\\s*,\\s*char\\s+\\*\\s*argv\\s*\\[\\s*\\]\\s*)?\\)\\s*(\\{)([\\s\\S]*)(\\})",
+            "int main(int argc, char *argv[]) {{BODY}}"
+        },
+        {
+            "(\\w+)\\s+([a-zA-Z]\\w*)\\s*(?:=\\s*((?:'[\\s\\S]?')|(?:\"\\w*\")|(?:\\w+)))?;",
+            "{TYPE} {VARNAME}{ = {VALUE}};"
+        },
+        {
+            "(\\w+)\\s*=\\s*(\\w+(?:\\((?:\\s*(?:\\w+\\s*,)*\\w+\\s*)?\\))?)\\s*;",
+            "{LEFT} = {RIGHT};"
         }
     },
     {
         "PASCAL",
         {
-            "uses[ ]+{LIB}\\s*;",
-            "uses[ ]+{LIB}\\s*;"
+            "uses\\s+(\\w+)\\s*;",
+            "uses {LIB};"
         },
         {
-            "function\\s+{FUNCNAME}(\\s*{ARGSLIST}\\s*)\\s*:\\s*{RETTYPE}\\s*;\\s*begin\\s+{BODYLINES}\\s+end;",
-            "function\\s+{FUNCNAME}(\\s*{ARGSLIST}\\s*)\\s*:\\s*{RETTYPE}\\s*;\\s*begin\\s+{BODYLINES}\\s+end;"
+            "result\\s*:=\\s*([^;]*);\\s*exit;",
+            "result := {RETVAL}; exit;"
         },
         {
-            "begin\\s+(.*)\\s+end\\.",
-            "begin\n{BODY}\nend."
+            "function\\s+(\\w+)\\s*\\(\\s*((?:\\w+\\s*:\\s*\\w+\\s*(;)\\s*)*\\s*\\w+\\s*:\\s*\\w+\\s*\\s*)?\\)\\s*:\\s*(\\w+)\\s*;\\s*(begin)([\\s\\S]*)(end);",
+            "function {FUNCNAME}({ARGSLIST}): {RETTYPE};\nbegin{BODYLINES}end;"
+        },
+        {
+            "(begin)([\\s\\S]*)(end)\\.",
+            "begin{BODY}end."
+        },
+        {
+            "var\\s+([a-zA-Z]\\w*)\\s*:\\s*(\\w+)\\s*(?::=\\s*((?:'[\\s\\S]*')|(?:\\w+)))?;",
+            "var {VARNAME}: {TYPE}{ := {VALUE}};"
+        },
+        {
+            "(\\w+)\\s*=\\s*(\\w+(?:\\((?:\\s*(?:\\w+\\s*,)*\\w+\\s*)?\\))?)\\s*;",
+            "{LEFT} := {RIGHT};"
         }
     }
 };

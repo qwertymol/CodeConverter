@@ -19,15 +19,22 @@ QString CodeConverter::parse (QString &context, QString fromLang, QString toLang
 
     Q_ASSERT (lind1 != -1 && lind2 != -1);
 
-    context = assignmentReplace (context, &LANGS[lind1].assignmentTpl, &LANGS[lind2].assignmentTpl);
     context = returnReplacer (context, &LANGS[lind1].returnTpl, &LANGS[lind2].returnTpl);
-    context = varInitReplace (context, &LANGS[lind1].varInitTpl, &LANGS[lind2].varInitTpl, fromLang);
     context = includingDeclReplace (context, &LANGS[lind1].includingTpl, &LANGS[lind2].includingTpl, fromLang);
-    context = mainFuncReplace (context, &LANGS[lind1].mainFuncTpl, &LANGS[lind2].mainFuncTpl, fromLang);
-    context = funcDeclReplace (context, &LANGS[lind1].funcTpl, &LANGS[lind2].funcTpl, fromLang);
+
+    if (fromLang == "PASCAL") {
+        context = funcDeclReplace (context, &LANGS[lind1].funcTpl, &LANGS[lind2].funcTpl, fromLang);
+        context = mainFuncReplace (context, &LANGS[lind1].mainFuncTpl, &LANGS[lind2].mainFuncTpl, fromLang);
+    } else {
+        context = mainFuncReplace (context, &LANGS[lind1].mainFuncTpl, &LANGS[lind2].mainFuncTpl, fromLang);
+        context = funcDeclReplace (context, &LANGS[lind1].funcTpl, &LANGS[lind2].funcTpl, fromLang);
+    }
+
+    context = varInitReplace (context, &LANGS[lind1].varInitTpl, &LANGS[lind2].varInitTpl, fromLang);
+    context = assignmentReplace (context, &LANGS[lind1].assignmentTpl, &LANGS[lind2].assignmentTpl);
 
     if (fromLang == "PASCAL")
-        context = "#include<iostream>\n" + context;
+        context = "#include <iostream>\n\n" + context;
 
     context = context.trimmed ();
 
@@ -91,35 +98,34 @@ QString &CodeConverter::mainFuncReplace (QString &context, const ReplaceTpl *tpl
     QRegExp re;
     QString pattern = tplFrom->pattern;
     re.setPattern (pattern);
+    re.setMinimal(true);
 
     if (re.indexIn (context) != -1) {
 
         QString body = re.cap(2);
-        int index = 0, innerBlock = 0;
-        while (1) {
-            int openBrace = body.indexOf (re.cap(1), index + 1), closeBrace = body.indexOf (re.cap(3), index + 1);
-            if (closeBrace != -1 && openBrace != -1 && openBrace < closeBrace) {
-                innerBlock++;
-                index = openBrace;
-            } else if (closeBrace != -1 && openBrace != -1 && openBrace > closeBrace) {
-                innerBlock--;
-                index = closeBrace;
-            } else {
-                break;
-            }
+//        int index = 0, innerBlock = 0;
+//        while (1) {
+//            int openBrace = body.indexOf (re.cap(1), index + 1), closeBrace = body.indexOf (re.cap(3), index + 1);
+//            if (closeBrace != -1 && openBrace != -1 && openBrace < closeBrace) {
+//                innerBlock++;
+//                index = openBrace;
+//            } else if (closeBrace != -1 && openBrace != -1 && openBrace > closeBrace) {
+//                innerBlock--;
+//                index = closeBrace;
+//            } else {
+//                break;
+//            }
 
-            if (innerBlock < 0) {
-                body = body.left (index);
-                break;
-            }
-        }
+//            if (innerBlock < 0) {
+//                body = body.left (index);
+//                break;
+//            }
+//        }
 
         QString repl = tplTo->after;
         repl.replace ("{BODY}", body);
         QString res = re.cap(0).replace (re.cap(2), body);
         context.replace (res, repl);
-
-        context = functionContainReplace(context, fromLang);
     }
 
     return context;
@@ -128,43 +134,55 @@ QString &CodeConverter::mainFuncReplace (QString &context, const ReplaceTpl *tpl
 
 QString &CodeConverter::funcDeclReplace (QString &context, const ReplaceTpl *tplFrom, const ReplaceTpl *tplTo, QString fromLang)
 {
+    context = blocksReplace(context, fromLang);
+    context = functionContainReplace(context, fromLang);
+
     QRegExp re;
     bool reversed = tplFrom->after.indexOf ("{RETTYPE}") < tplTo->after.indexOf ("{RETTYPE}");
     QString pattern = tplFrom->pattern;
     re.setPattern (pattern);
+    re.setMinimal(true);
     int offset = 0;
 
     while (re.indexIn (context, offset) != -1) {
+        TypesReplacer tr;
         QStringList txts = re.capturedTexts ();
-        QString body = txts[6];
-        int index = 0, innerBlock = 0;
-        while (1) {
-            int openBrace = body.indexOf (txts[5], index + 1), closeBrace = body.indexOf (txts[7], index + 1);
-            if (closeBrace != -1 && openBrace != -1 && openBrace < closeBrace) {
-                innerBlock++;
-                index = openBrace;
-            } else if (closeBrace != -1 && openBrace != -1 && openBrace > closeBrace) {
-                innerBlock--;
-                index = closeBrace;
-            } else {
-                break;
-            }
+        QString type = reversed ? txts[1] : txts[4];
 
-            if (innerBlock < 0) {
-                body = body.left (index);
-                break;
-            }
+        if (tr.getType (type, fromLang).isEmpty ()) {
+            offset += type.length ();
+            continue;
         }
+
+        QString body = txts[6];
+//        int index = 0, innerBlock = 0;
+//        while (1) {
+//            int openBrace = body.indexOf (txts[5], index + 1), closeBrace = body.indexOf (txts[7], index + 1);
+//            if (closeBrace != -1 && openBrace != -1 && openBrace < closeBrace) {
+//                innerBlock++;
+//                index = openBrace;
+//            } else if (closeBrace != -1 && openBrace != -1 && openBrace > closeBrace) {
+//                innerBlock--;
+//                index = closeBrace;
+//            } else {
+//                break;
+//            }
+
+//            if (innerBlock < 0) {
+//                body = body.left (index);
+//                break;
+//            }
+//        }
 
         offset += body.length ();
 
         QString repl = tplTo->after;
-        TypesReplacer tr;
 
         repl.replace ("{RETTYPE}", reversed ? tr.getType(txts[1], fromLang) : tr.getType(txts[4], fromLang));
         repl.replace ("{FUNCNAME}", reversed ? txts[2] : txts[1]);
         repl.replace ("{ARGSLIST}", argsReplacer(reversed ? txts[3] : txts[2], fromLang));
-        repl.replace ("{BODYLINES}", funcDeclReplace(body, tplFrom, tplTo, fromLang));
+//        repl.replace ("{BODYLINES}", funcDeclReplace(body, tplFrom, tplTo, fromLang));
+        repl.replace ("{BODYLINES}", body);
 
         QString res = txts[0].replace (txts[6], body);
 
@@ -181,20 +199,18 @@ QString &CodeConverter::includingDeclReplace (QString &context, const ReplaceTpl
     QString pattern = tplFrom->pattern;
     re.setPattern (pattern);
 
-//    if (re.indexIn (context) != -1) {
-        QString buf = re.cap(1);
-        QString repl = tplTo->after;
+    QString buf = re.cap(1);
+    QString repl = tplTo->after;
 
-        LibsReplacer lr;
-        QString lib = lr.getLib (buf, fromLang);
+    LibsReplacer lr;
+    QString lib = lr.getLib (buf, fromLang);
 
-        if (!lib.isEmpty ()) {
-            repl.replace ("{LIB}", buf);
-            context.replace (re, repl);
-        } else {
-            context.replace (re, "");
-        }
-//    }
+    if (!lib.isEmpty ()) {
+        repl.replace ("{LIB}", buf);
+        context.replace (re, repl);
+    } else {
+        context.replace (re, "");
+    }
 
     return context;
 }
@@ -213,9 +229,15 @@ QString &CodeConverter::varInitReplace (QString &context, const ReplaceTpl *tplF
         QString repl = tplTo->after;
 
         TypesReplacer tr;
+        QString type = tr.getType(reversed ? txts[2] : txts[1], fromLang);
+
+        if (type.isEmpty ()) {
+            index++;
+            continue;
+        }
 
         repl.replace ("{VARNAME}", reversed ? txts[1] : txts[2]);
-        repl.replace ("{TYPE}", reversed ? tr.getType(txts[2], fromLang) : tr.getType(txts[1], fromLang));
+        repl.replace ("{TYPE}", type);
 
         if(txts[3].isEmpty()) {
             int in = repl.indexOf("{");
@@ -244,11 +266,51 @@ QString &CodeConverter::assignmentReplace (QString &context, const ReplaceTpl *t
         QString repl = tplTo->after;
         repl.replace ("{LEFT}", re.cap(1));
         repl.replace ("{RIGHT}", re.cap(2));
-        context.replace (re, repl);
+        context.replace (re.cap(), repl);
     }
 
     return context;
+}
 
+
+QString &CodeConverter::blocksReplace (QString &context, QString fromLang)
+{
+    BlocksReplacer br;
+    QString pattern = br.getOppositeMatchPattern (fromLang);
+    QRegExp r (pattern);
+    r.setMinimal (true);
+
+    int offset = 0;
+
+    while (r.indexIn (context, offset) != -1) {
+        TemplatePair pat = br.getBlockTpl (r.cap(1), fromLang);
+        QRegExp re (pat.pattern);
+        re.setMinimal (true);
+
+        if (re.indexIn (context, offset) != -1) {
+            if (r.cap(1) == "while" || r.cap(1) == "if") {
+                pat.after.replace("{CONDITION}", re.cap(1));
+                pat.after.replace("{BODY}", re.cap(2));
+            } else if (r.cap(1) == "for") {
+                pat.after.replace("{VARNAME}", re.cap(1));
+                pat.after.replace("{VALUE}", re.cap(2));
+                pat.after.replace("{LIMIT}", re.cap(3));
+                pat.after.replace("{BODY}", re.cap(4));
+            } else if (r.cap(1) == "else") {
+                pat.after.replace("{BODY}", re.cap(1));
+            }
+
+            context.replace(re.cap(), pat.after);
+        }
+
+        offset += r.cap (1).length ();
+    }
+
+    if (fromLang == "C++") {
+        context.replace(QRegExp ("end\\s*;\\s*else"), "end else");
+    }
+
+    return context;
 }
 
 
@@ -269,6 +331,7 @@ QString &CodeConverter::functionContainReplace (QString &context, QString fromLa
             continue;
 
         QRegExp re (tpl1.pattern);
+        re.setMinimal(true);
         if (re.indexIn (context) != -1) {
             QString argsStr = re.cap (1);
             QString delim = re.cap (2);
@@ -322,11 +385,11 @@ QString &CodeConverter::operationReplacer (QString &context, QString fromLang)
     int index = 0;
 
     while ((index = re.indexIn (context, index + re.cap ().length ())) != -1) {
-        QString op = o.getOperation (re.cap (), fromLang);
+        QString op = o.getOperation (re.cap (1), fromLang);
         if (op.isEmpty ())
             continue;
 
-        context.replace (index, re.cap ().length (), op);
+        context.replace (re.pos(1), re.cap (1).length (), op);
     }
 
     return context;
@@ -393,9 +456,10 @@ QString TypesReplacer::getType (QString type, QString from)
             if (getTypeFromPair (Void, index) == type)
                 return getTypeFromPair (Void, 1 - index);
             break;
-
         }
     }
+
+    return QString ();
 }
 
 
@@ -491,8 +555,8 @@ TemplatePair BaseFuncsReplacer::getFuncTpl (QString funcName, QString from)
 OperationReplacer::OperationReplacer ()
 {
     langs <<  "C++" <<  "PASCAL";
-    matchPatterns << "(?:\\+\\+|--|\\+|-|\\/|\\*|%|&&|\\|\\||\\^\\^|==|<=|<|>=|>)"
-                  << "(?:\\+=1|-=1|mod|div|and|xor|or|\\+|-|\\/|\\*|=|<=|<|>=|>)";
+    matchPatterns << "((?:\\+\\+|--|\\+|-|\\/|\\*|%|&&|\\|\\||\\^\\^|==|<=|<|>=|>))"
+                  << "[^:]((?:\\+=1|-=1|mod|div|and|xor|or|\\+|-|\\/|\\*|=|<=|<|>=|>))";
 
     ops << OpPair {"+", "+"} << OpPair {"-", "-"} << OpPair {"/", "/"} << OpPair {"*", "*"}
         << OpPair {"/", "div"} << OpPair {"%", "mod"} << OpPair {"&&", "and"} << OpPair {"||", "or"}
@@ -526,4 +590,84 @@ QString OperationReplacer::getOperationFromPair (OperationReplacer::OpPair &op, 
 {
 
     return n == 0 ? op.first : op.second;
+}
+
+
+BlocksReplacer::BlocksReplacer ()
+{
+    langs <<  "C++" <<  "PASCAL";
+    matchPatterns << "((?:(?:if)|(?:while)|(?:for)|(?:else)))\\s*(?:\\([^\\)]*\\))?\\s*(?:(?:[^\\{;]+;)|(?:\\{[\\s\\S]*\\}))"
+                  << "((?:(?:if)|(?:while)|(?:for)|(?:else)))\\s*(?:(?:[^;]+;)|(?:begin[\\s\\S]*end;))";
+
+    blocks << BlockPair
+    {
+        {
+              "while\\s*\\(((?:[\\s\\S](?!\\s*\\{))*)\\)\\s*\\{(\\s*[\\s\\S]*\\s*)\\}",
+              "while {CONDITION} do begin{BODY}end;"
+        },
+        {
+              "while\\s+((?:.(?!do))*)\\s+do\\s+begin((?:[\\s\\S](?!end;))*\\s*)end;",
+              "while({CONDITION}) {{BODY}}"
+        }
+    }
+           << BlockPair
+    {
+        {
+              "for\\s*\\(int\\s*(\\w+)\\s*=\\s*(\\w+);\\s*(?:\\w+)\\s*<=\\s*(\\w+);\\s*(?:\\w+)\\+\\+\\)\\s*\\{(\\s*[\\s\\S]*\\s*)\\}",
+              "for var {VARNAME} := {VALUE} to {LIMIT} do begin{BODY}end;"
+        },
+        {
+              "for\\s*var\\s*(\\w+)\\s*:=\\s*(\\w+)\\s*to\\s*(\\w+)\\s*do\\s*begin(\\s*[\\s\\S]*\\s*)end;",
+              "for(int {VARNAME} = {VALUE}; {VARNAME} <= {LIMIT}; {VARNAME}++) {{BODY}}"
+        }
+    }
+          << BlockPair
+    {
+        {
+             "if\\s*\\(([^\\)]*)\\)\\s*\\{([^\\}]*)\\}",
+             "if {CONDITION} then begin{BODY}end;"
+        },
+        {
+             "if\\s*((?:.(?!then))*)\\s*then\\s*begin(\\s*[\\s\\S]*\\s*)end;?",
+             "if({CONDITION}) {{BODY}}"
+        }
+    }
+         << BlockPair
+    {
+        {
+            "else\\s*\\{([^\\}]*)\\}",
+            "else begin{BODY}end;"
+        },
+        {
+            "else\\s*begin(\\s*(?:.(?!end;))*\\s*)end;",
+            "else {{BODY}}"
+        }
+    };
+}
+
+
+TemplatePair BlocksReplacer::getBlockTpl (QString blockName, QString from)
+{
+    int index = langs.indexOf (from);
+
+    if (blockName.trimmed ().isEmpty ())
+        return TemplatePair ();
+
+    for (int i = 0; i < blocks.length (); i++) {
+        TemplatePair tpl = index == 0 ? blocks[i].first : blocks[i].second;
+        TemplatePair alterTpl = index == 0 ? blocks[i].second : blocks[i].first;
+
+        if (alterTpl.after.contains (QRegExp("\\b" + blockName + "\\b")))
+            return tpl;
+    }
+
+    return TemplatePair ();
+}
+
+
+QString BlocksReplacer::getOppositeMatchPattern (QString from)
+{
+    int index = langs.indexOf (from);
+
+    return matchPatterns[index];
 }

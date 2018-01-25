@@ -39,7 +39,7 @@ int main (int argc, char *argv[])
 
     QString outData = cc.parse (data, inverted ? "C++" : "PASCAL", inverted ? "PASCAL" : "C++");
     QByteArray b = outData.toUtf8 ();
-    out.write (res, b.length ());
+    out.write (b, b.length ());
 
     in.close ();
     out.close ();

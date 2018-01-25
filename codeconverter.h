@@ -19,6 +19,7 @@ private:
     QString &includingDeclReplace (QString &context, const ReplaceTpl *tplFrom, const ReplaceTpl *tplTo, QString fromLang);
     QString &varInitReplace (QString &context, const ReplaceTpl *tplFrom, const ReplaceTpl *tplTo, QString fromLang);
     QString &assignmentReplace (QString &context, const ReplaceTpl *tplFrom, const ReplaceTpl *tplTo);
+    QString &blocksReplace (QString &context, QString fromLang);
     QString &functionContainReplace (QString &context, QString fromLang);
     QString &operationReplacer (QString &context, QString fromLang);
 };
@@ -93,6 +94,20 @@ private:
         TemplatePair first, second;
     };
     QList<FuncPair> funcs;
+};
+
+class BlocksReplacer {
+public:
+    BlocksReplacer ();
+    TemplatePair getBlockTpl (QString blockName, QString from);
+    QString getOppositeMatchPattern (QString from);
+
+private:
+    QStringList langs, matchPatterns;
+    struct BlockPair {
+        TemplatePair first, second;
+    };
+    QList<BlockPair> blocks;
 };
 
 #endif

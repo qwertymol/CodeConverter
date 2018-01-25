@@ -10,7 +10,7 @@ int main (int argc, char *argv[])
 {
     if (argc < 2) {
         printf("usage:\n\t%s FILENAME\n"
-               "(if file without extension \".pas\", \".cpp\" then you get an error)");
+               "(if file without extension \".pas\", \".cpp\" then you get an error)", argv[0]);
 
         return -1;
     }
@@ -23,10 +23,12 @@ int main (int argc, char *argv[])
     in.open (QFile::ReadOnly);
 
     if (name.endsWith (".pas", Qt::CaseInsensitive)) {
-        out.setFileName (name.chopped (4) + ".cpp");
+        name.chop (4);
+        out.setFileName (name + ".cpp");
         inverted = false;
     } else if (name.endsWith (".cpp", Qt::CaseInsensitive)) {
-        out.setFileName (name.chopped (4) + ".pas");
+        name.chop (4);
+        out.setFileName (name + ".pas");
         inverted = true;
     } else  {
         printf ("Only .pas or .cpp files applies");

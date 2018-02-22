@@ -87,9 +87,9 @@ QString CodeConverter::argsReplacer (QString &args, QString fromLang)
 
         QString res = buf.join (", ");
         return res;
-    }/* else {
+    } else {
         return QString ();
-    }*/
+    }
 }
 
 
@@ -103,24 +103,6 @@ QString &CodeConverter::mainFuncReplace (QString &context, const ReplaceTpl *tpl
     if (re.indexIn (context) != -1) {
 
         QString body = re.cap(2);
-//        int index = 0, innerBlock = 0;
-//        while (1) {
-//            int openBrace = body.indexOf (re.cap(1), index + 1), closeBrace = body.indexOf (re.cap(3), index + 1);
-//            if (closeBrace != -1 && openBrace != -1 && openBrace < closeBrace) {
-//                innerBlock++;
-//                index = openBrace;
-//            } else if (closeBrace != -1 && openBrace != -1 && openBrace > closeBrace) {
-//                innerBlock--;
-//                index = closeBrace;
-//            } else {
-//                break;
-//            }
-
-//            if (innerBlock < 0) {
-//                body = body.left (index);
-//                break;
-//            }
-//        }
 
         QString repl = tplTo->after;
         repl.replace ("{BODY}", body);
@@ -155,24 +137,6 @@ QString &CodeConverter::funcDeclReplace (QString &context, const ReplaceTpl *tpl
         }
 
         QString body = txts[6];
-//        int index = 0, innerBlock = 0;
-//        while (1) {
-//            int openBrace = body.indexOf (txts[5], index + 1), closeBrace = body.indexOf (txts[7], index + 1);
-//            if (closeBrace != -1 && openBrace != -1 && openBrace < closeBrace) {
-//                innerBlock++;
-//                index = openBrace;
-//            } else if (closeBrace != -1 && openBrace != -1 && openBrace > closeBrace) {
-//                innerBlock--;
-//                index = closeBrace;
-//            } else {
-//                break;
-//            }
-
-//            if (innerBlock < 0) {
-//                body = body.left (index);
-//                break;
-//            }
-//        }
 
         offset += body.length ();
 
@@ -181,7 +145,6 @@ QString &CodeConverter::funcDeclReplace (QString &context, const ReplaceTpl *tpl
         repl.replace ("{RETTYPE}", reversed ? tr.getType(txts[1], fromLang) : tr.getType(txts[4], fromLang));
         repl.replace ("{FUNCNAME}", reversed ? txts[2] : txts[1]);
         repl.replace ("{ARGSLIST}", argsReplacer(reversed ? txts[3] : txts[2], fromLang));
-//        repl.replace ("{BODYLINES}", funcDeclReplace(body, tplFrom, tplTo, fromLang));
         repl.replace ("{BODYLINES}", body);
 
         QString res = txts[0].replace (txts[6], body);
@@ -628,7 +591,7 @@ BlocksReplacer::BlocksReplacer ()
              "if {CONDITION} then begin{BODY}end;"
         },
         {
-             "if\\s*((?:.(?!then))*)\\s*then\\s*begin(\\s*[\\s\\S]*\\s*)end;?",
+             "if\\s+((?:.(?!then))*)\\s*then\\s*begin(\\s*[\\s\\S]*\\s*)end;?",
              "if({CONDITION}) {{BODY}}"
         }
     }
